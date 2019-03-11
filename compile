@@ -1,0 +1,44 @@
+#!/bin/bash
+
+LOC=$(pwd)
+DEVICE=gemini
+TOOLCHAIN="$LOC/aarch64/bin/aarch64-elf-"
+TOOLCHAIN_32="$LOC/arm/bin/arm-eabi-"
+ARCH=arm64
+SUBARCH=arm64
+DEFCONFIG=${DEVICE}_defconfig
+KERNEL_IMAGE="Image.gz-dtb"
+NAME=VanillaKernel-$DEVICE
+OUT=${DEVICE}_out
+DATE=`date +%d%m%y*%H:%M`
+J=$(nproc)
+
+if [[ $1 == 'cfg' ]]; then
+	make O=$OUT ARCH=$ARCH SUBARCH=$SUBARCH -j$J CROSS_COMPILE=$TOOLCHAIN CROSS_COMPILE_ARM32=$TOOLCHAIN_32 menuconfig KCONFIG_CONFIG=$LOC/arch/arm64/configs/$DEFCONFIG
+	if ! [[ $2 == 'c' ]]; then
+		exit
+	fi
+fi
+
+#Clean
+rm package/zImage 2> /dev/null
+rm package/log 2> /dev/null
+rm $OUT/arch/$ARCH/boot/$KERNEL_IMAGE 2> /dev/null
+
+#Make defconfig
+make O=$OUT ARCH=$ARCH SUBARCH=$SUBARCH -j$J CROSS_COMPILE=$TOOLCHAIN $DEFCONFIG CROSS_COMPILE_ARM32=$TOOLCHAIN_32
+
+#Compile
+make O=$OUT ARCH=$ARCH SUBARCH=$SUBARCH -j$J CROSS_COMPILE=$TOOLCHAIN CROSS_COMPILE_ARM32=$TOOLCHAIN_32
+
+#Pack zip
+if [ -e $OUT/arch/$ARCH/boot/$KERNEL_IMAGE ]; then
+cp $OUT/arch/$ARCH/boot/$KERNEL_IMAGE package/zImage
+git log --oneline -n 100 > package/log
+cd package
+sed -i "s/Vanilla-device/${DEVICE}/g" anykernel.sh
+zip -r9 ../compiled/$NAME-$DATE.zip *
+sed -i "s/${DEVICE}/Vanilla-device/g" anykernel.sh
+else
+echo 'No boot image!'
+fi
