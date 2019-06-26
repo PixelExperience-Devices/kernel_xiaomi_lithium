@@ -814,9 +814,8 @@ static int __usbhsf_dma_map_ctrl(struct usbhs_pkt *pkt, int map)
 }
 
 static void usbhsf_dma_complete(void *arg);
-static void xfer_work(struct work_struct *work)
+static void usbhsf_dma_xfer_preparing(struct usbhs_pkt *pkt)
 {
-	struct usbhs_pkt *pkt = container_of(work, struct usbhs_pkt, work);
 	struct usbhs_pipe *pipe = pkt->pipe;
 	struct usbhs_fifo *fifo = usbhs_pipe_to_fifo(pipe);
 	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
@@ -825,6 +824,11 @@ static void xfer_work(struct work_struct *work)
 	struct device *dev = usbhs_priv_to_dev(priv);
 	enum dma_transfer_direction dir;
 
+	fifo = usbhs_pipe_to_fifo(pipe);
+	if (!fifo)
+		return;
+
+	chan = usbhsf_dma_chan_get(fifo, pkt);
 	dir = usbhs_pipe_is_dir_in(pipe) ? DMA_DEV_TO_MEM : DMA_MEM_TO_DEV;
 
 	desc = dmaengine_prep_slave_single(chan, pkt->dma + pkt->actual,
@@ -849,6 +853,19 @@ static void xfer_work(struct work_struct *work)
 	usbhs_pipe_enable(pipe);
 	usbhsf_dma_start(pipe, fifo);
 	dma_async_issue_pending(chan);
+}
+
+static void xfer_work(struct work_struct *work)
+{
+	struct usbhs_pkt *pkt = container_of(work, struct usbhs_pkt, work);
+	struct usbhs_pipe *pipe = pkt->pipe;
+	struct usbhs_priv *priv = usbhs_pipe_to_priv(pipe);
+	unsigned long flags;
+
+	usbhs_lock(priv, flags);
+	usbhsf_dma_xfer_preparing(pkt);
+	usbhs_unlock(priv, flags);
+>>>>>>> 40b0b682c4aa... usb: renesas_usbhs: add a workaround for a race condition of workqueue
 }
 
 /*
@@ -896,6 +913,14 @@ static int usbhsf_dma_prepare_push(struct usbhs_pkt *pkt, int *is_done)
 
 	INIT_WORK(&pkt->work, xfer_work);
 	schedule_work(&pkt->work);
+	usbhsf_tx_irq_ctrl(pipe, 0);
+	/* FIXME: Workaound for usb dmac that driver can be used in atomic */
+	if (usbhs_get_dparam(priv, has_usb_dmac)) {
+		usbhsf_dma_xfer_preparing(pkt);
+	} else {
+		INIT_WORK(&pkt->work, xfer_work);
+		schedule_work(&pkt->work);
+	}
 
 	return 0;
 
@@ -999,8 +1024,7 @@ static int usbhsf_dma_try_pop(struct usbhs_pkt *pkt, int *is_done)
 
 	pkt->trans = len;
 
-	INIT_WORK(&pkt->work, xfer_work);
-	schedule_work(&pkt->work);
+	usbhsf_dma_xfer_preparing(pkt);
 
 	return 0;
 
