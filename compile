@@ -10,7 +10,7 @@ DEFCONFIG=${DEVICE}_defconfig
 KERNEL_IMAGE="Image.gz-dtb"
 NAME=VanillaKernel-$DEVICE
 OUT=${DEVICE}_out
-DATE=`date +%d%m%y*%H:%M`
+DATE=`date +%d%m%y`
 J=$(nproc)
 
 if [[ $1 == 'cfg' ]]; then
