@@ -1,0 +1,6 @@
+[submodule "aarch64"]
+	path = aarch64
+	url = https://github.com/Jawor245/aarch64
+[submodule "arm"]
+	path = arm
+	url = https://github.com/Jawor245/arm
