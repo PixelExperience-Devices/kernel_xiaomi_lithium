@@ -105,3 +105,4 @@ android/configs/android-*.cfg
 /gemini_out/
 /compiled/
 /package/zImage
+/package/log
