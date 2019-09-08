@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 18
-SUBLEVEL = 142
+SUBLEVEL = 143
 EXTRAVERSION = -VanillaKernel
 NAME = Diseased Newt
 
