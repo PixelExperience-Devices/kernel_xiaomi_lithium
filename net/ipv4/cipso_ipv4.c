@@ -1606,7 +1606,6 @@ unsigned char *cipso_v4_optptr(const struct sk_buff *skb)
 			return NULL;
 		if (optptr[0] == IPOPT_CIPSO)
 			return optptr;
-
 		optlen -= taglen;
 		optptr += taglen;
 	}

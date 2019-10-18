@@ -241,23 +241,27 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 
 	spin_lock_irqsave(&fh->vdev->fh_lock, flags);
 	found_ev = v4l2_event_subscribed(fh, sub->type, sub->id);
-	if (!found_ev)
-		list_add(&sev->list, &fh->subscribed);
 	spin_unlock_irqrestore(&fh->vdev->fh_lock, flags);
 
 	if (found_ev) {
 		/* Already listening */
 		kfree(sev);
-	} else if (sev->ops && sev->ops->add) {
+		goto out_unlock;
+	}
+
+	if (sev->ops && sev->ops->add) {
 		ret = sev->ops->add(sev, elems);
 		if (ret) {
-			spin_lock_irqsave(&fh->vdev->fh_lock, flags);
-			__v4l2_event_unsubscribe(sev);
-			spin_unlock_irqrestore(&fh->vdev->fh_lock, flags);
 			kfree(sev);
+			goto out_unlock;
 		}
 	}
 
+	spin_lock_irqsave(&fh->vdev->fh_lock, flags);
+	list_add(&sev->list, &fh->subscribed);
+	spin_unlock_irqrestore(&fh->vdev->fh_lock, flags);
+
+out_unlock:
 	mutex_unlock(&fh->subscribe_lock);
 
 	return ret;
