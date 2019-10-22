@@ -4,3 +4,6 @@
 [submodule "arm"]
 	path = arm
 	url = https://github.com/Jawor245/arm
+[submodule "drivers/staging/qcacld-2.0"]
+	path = drivers/staging/qcacld-2.0
+	url = https://github.com/MisterJaworro/qcacld-2.0.git
